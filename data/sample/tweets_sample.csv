@@ -1,0 +1,32 @@
+user_id,message,timestamp,label
+user_001,Why is my order taking so long? I ordered it 2 weeks ago.,2024-01-15T10:30:00Z,complaint
+user_002,Love this product! Best purchase ever.,2024-01-15T10:45:00Z,praise
+user_003,Can I return an item that was damaged in shipping?,2024-01-15T11:00:00Z,inquiry
+user_004,Your customer service is absolutely terrible.,2024-01-15T11:15:00Z,complaint
+user_005,Just wanted to say thank you for the great experience!,2024-01-15T11:30:00Z,praise
+user_006,Where can I find the refund policy?,2024-01-15T11:45:00Z,inquiry
+user_001,Why is my order taking so long? I ordered it 2 weeks ago.,2024-01-15T12:00:00Z,complaint
+user_007,How long does shipping usually take?,2024-01-15T12:15:00Z,inquiry
+user_008,This is the worst product I have ever purchased.,2024-01-15T12:30:00Z,complaint
+user_009,Amazing quality and fast shipping!,2024-01-15T12:45:00Z,praise
+user_010,Why is my order taking so long? I ordered it 2 weeks ago.,2024-01-15T13:00:00Z,complaint
+user_011,Do you offer international shipping?,2024-01-15T13:15:00Z,inquiry
+user_012,I'm very disappointed with this service.,2024-01-15T13:30:00Z,complaint
+user_013,Fantastic service! Would definitely recommend.,2024-01-15T13:45:00Z,praise
+user_014,What is the warranty on this item?,2024-01-15T14:00:00Z,inquiry
+user_015,Why is my order taking so long? I ordered it 2 weeks ago!,2024-01-15T14:15:00Z,complaint
+user_016,How can I track my shipment?,2024-01-15T14:30:00Z,inquiry
+user_017,Horrible experience from start to finish.,2024-01-15T14:45:00Z,complaint
+user_018,Absolutely love everything about this company.,2024-01-15T15:00:00Z,praise
+user_019,Can I get a replacement for the defective unit?,2024-01-15T15:15:00Z,inquiry
+user_020,My order is taking forever. I ordered it 2 weeks ago.,2024-01-15T15:30:00Z,complaint
+user_021,Do you have this item in a different size?,2024-01-15T15:45:00Z,inquiry
+user_022,This is exactly what I wanted. Five stars!,2024-01-15T16:00:00Z,praise
+user_023,I am extremely unsatisfied with my purchase.,2024-01-15T16:15:00Z,complaint
+user_024,How do I contact customer support?,2024-01-15T16:30:00Z,inquiry
+user_025,Your service is outstanding!,2024-01-15T16:45:00Z,praise
+user_026,Why is my order taking so long? I ordered it 2 weeks ago?,2024-01-15T17:00:00Z,complaint
+user_027,What payment methods do you accept?,2024-01-15T17:15:00Z,inquiry
+user_028,Incredibly disappointed with the quality.,2024-01-15T17:30:00Z,complaint
+user_029,Best company ever. Highly recommended!,2024-01-15T17:45:00Z,praise
+user_030,Is there a discount code I can use?,2024-01-15T18:00:00Z,inquiry
