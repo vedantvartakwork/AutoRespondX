@@ -2,9 +2,12 @@
 
 import os
 import json
+
 import hashlib
 import logging
 from dotenv import load_dotenv
+from dedup.bloom_filter import BloomFilter
+from dedup.lsh_utils import LSHBand
 
 load_dotenv()
 if 'PYSPARK_SUBMIT_ARGS' not in os.environ:
@@ -21,13 +24,35 @@ class StreamProcessor:
     """Real-time stream processor using Spark."""
 
     def __init__(self):
-        """Initialize Spark session, model, and database writer."""
+        """Initialize Spark session, model, database writer, and deduplication state."""
         self.spark = SparkSession.builder \
             .appName(os.getenv('SPARK_APP_NAME', 'AutoRespondStreaming')) \
             .master(os.getenv('SPARK_MASTER', 'local[*]')) \
             .getOrCreate()
         self.predictor = Predictor()
         self.db_writer = DatabaseWriter()
+
+        # Deduplication state
+        bf_size = int(os.getenv('BLOOM_FILTER_SIZE', 100000))
+        bf_hashes = int(os.getenv('BLOOM_FILTER_NUM_HASHES', 3))
+        lsh_rows = int(os.getenv('LSH_NUM_ROWS', 5))
+        self.bloom_filter = BloomFilter(size=bf_size, num_hashes=bf_hashes)
+        self.lsh = LSHBand(num_rows=lsh_rows)
+        self.seen_ids = set()  # For LSH item ids
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        """Normalize text for deduplication (lowercase, strip, collapse spaces)."""
+        return ' '.join(text.lower().strip().split())
+
+    @staticmethod
+    def _text_to_vector(text: str, dim: int = 16) -> list:
+        """Convert normalized text to a simple numeric vector for LSH (token-hash buckets)."""
+        tokens = text.split()
+        vec = [0] * dim
+        for t in tokens:
+            h = int(hashlib.md5(t.encode()).hexdigest(), 16)
+            vec[h % dim] += 1
+        return vec
 
     @staticmethod
     def _hash_user_id(user_id: str) -> str:
@@ -44,6 +69,7 @@ class StreamProcessor:
         if confidence > 0.8 and label in templates:
             return templates[label]
         return fallback_msg
+
 
     def _process_batch(self, batch_df, epoch_id: int):
         """Process each micro-batch from the Kafka stream."""
@@ -67,9 +93,34 @@ class StreamProcessor:
                 label, confidence = self.predictor.predict(message)
                 hashed_user = self._hash_user_id(user_id)
 
-                # For MVP, treat all as not duplicate
-                is_duplicate = False
+                # Deduplication logic
+                norm_msg = self._normalize_text(message)
+                # Exact duplicate
+                is_duplicate = self.bloom_filter.contains(norm_msg)
+                if not is_duplicate:
+                    self.bloom_filter.add(norm_msg)
+                else:
+                    duplicate_count += 1
+
+                # Near-duplicate (LSH)
+                lsh_dim = self.lsh.num_rows * 3  # keep vector dim simple, >num_rows
+                vec = self._text_to_vector(norm_msg, dim=lsh_dim)
+                band_id = 0  # single band for MVP
+                msg_id = hashlib.md5(norm_msg.encode()).hexdigest()
+                candidates = self.lsh.get_candidates(vec, band_id)
                 is_near_duplicate = False
+                if candidates:
+                    # Exclude self, check if any seen before
+                    for cid in candidates:
+                        if cid != msg_id and cid in self.seen_ids:
+                            is_near_duplicate = True
+                            break
+                if not is_near_duplicate:
+                    self.lsh.add_vector(vec, msg_id, band_id)
+                    self.seen_ids.add(msg_id)
+                else:
+                    near_duplicate_count += 1
+
                 if confidence < 0.8:
                     low_confidence_count += 1
 
