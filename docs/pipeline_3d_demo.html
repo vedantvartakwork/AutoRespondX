@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AutoRespondX 3D Pipeline Flow</title>
+  <script src="https://unpkg.com/3d-force-graph"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #181c24;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      overflow: hidden;
+    }
+    #title {
+      text-align: center;
+      font-size: 2.2em;
+      font-weight: bold;
+      margin-top: 18px;
+      letter-spacing: 1px;
+    }
+    #subtitle {
+      text-align: center;
+      font-size: 1.1em;
+      color: #aaa;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
+    #3d-graph {
+      position: absolute;
+      top: 90px;
+      left: 0;
+      width: calc(100vw - 320px);
+      height: calc(100vh - 90px);
+    }
+    #info-panel {
+      position: absolute;
+      top: 90px;
+      right: 0;
+      width: 320px;
+      height: calc(100vh - 90px);
+      background: #23283a;
+      color: #fff;
+      border-left: 2px solid #222;
+      box-shadow: -2px 0 8px #0004;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      font-size: 1.08em;
+      z-index: 10;
+    }
+    #info-panel.hidden {
+      display: none;
+    }
+    #info-panel h2 {
+      margin: 0 0 10px 0;
+      font-size: 1.3em;
+      color: #6cf;
+    }
+    #info-panel p {
+      margin: 0;
+      color: #e0e0e0;
+      line-height: 1.5em;
+    }
+  </style>
+</head>
+<body>
+  <div id="title">AutoRespondX 3D Pipeline Flow</div>
+  <div id="subtitle">Presentation-only architecture visualization &mdash; click any node for details</div>
+  <div id="3d-graph"></div>
+  <div id="info-panel" class="hidden">
+    <h2 id="node-name"></h2>
+    <p id="node-desc"></p>
+    <div style="margin-top:18px;color:#aaa;font-size:0.97em;">Click outside this panel to close.</div>
+  </div>
+  <script>
+    // Node definitions
+    const nodes = [
+      { id: 'CSV Dataset', group: 'ingest' },
+      { id: 'Kafka Producer', group: 'ingest' },
+      { id: 'Kafka Topic (raw_tweets)', group: 'ingest' },
+      { id: 'Spark Structured Streaming', group: 'process' },
+      { id: 'Bloom Filter', group: 'process' },
+      { id: 'LSH Near-Duplicate Detection', group: 'process' },
+      { id: 'Decision Tree Classifier', group: 'process' },
+      { id: 'Reply Generator', group: 'process' },
+      { id: 'PostgreSQL processed_tweets', group: 'storage' },
+      { id: 'PostgreSQL reply_outbox', group: 'storage' },
+      { id: 'PostgreSQL metrics', group: 'storage' },
+      { id: 'SQL Views', group: 'serve' },
+      { id: 'Complaint Spike Alert', group: 'serve' }
+    ];
+
+    // Directed edges
+    const links = [
+      { source: 'CSV Dataset', target: 'Kafka Producer' },
+      { source: 'Kafka Producer', target: 'Kafka Topic (raw_tweets)' },
+      { source: 'Kafka Topic (raw_tweets)', target: 'Spark Structured Streaming' },
+      { source: 'Spark Structured Streaming', target: 'Bloom Filter' },
+      { source: 'Bloom Filter', target: 'LSH Near-Duplicate Detection' },
+      { source: 'LSH Near-Duplicate Detection', target: 'Decision Tree Classifier' },
+      { source: 'Decision Tree Classifier', target: 'Reply Generator' },
+      { source: 'Reply Generator', target: 'PostgreSQL processed_tweets' },
+      { source: 'PostgreSQL processed_tweets', target: 'PostgreSQL reply_outbox' },
+      { source: 'PostgreSQL processed_tweets', target: 'PostgreSQL metrics' },
+      { source: 'PostgreSQL processed_tweets', target: 'SQL Views' },
+      { source: 'PostgreSQL reply_outbox', target: 'SQL Views' },
+      { source: 'PostgreSQL metrics', target: 'SQL Views' },
+      { source: 'SQL Views', target: 'Complaint Spike Alert' }
+    ];
+
+    // Node explanations
+    const nodeInfo = {
+      'CSV Dataset': 'Source of tweet-like customer messages used for demo streaming.',
+      'Kafka Producer': 'Streams CSV rows one by one into Kafka.',
+      'Kafka Topic (raw_tweets)': 'Durable event stream for incoming messages.',
+      'Spark Structured Streaming': 'Consumes Kafka data in near-real-time micro-batches.',
+      'Bloom Filter': 'Detects exact duplicate tweets efficiently.',
+      'LSH Near-Duplicate Detection': 'Flags similar tweets that are not exact duplicates.',
+      'Decision Tree Classifier': 'Labels tweets as complaint, praise, or inquiry.',
+      'Reply Generator': 'Creates template-based replies from predicted labels.',
+      'PostgreSQL processed_tweets': 'Stores processed tweet records and generated reply text.',
+      'PostgreSQL reply_outbox': 'Stores replies queued for downstream action.',
+      'PostgreSQL metrics': 'Stores processing and monitoring metrics.',
+      'SQL Views': 'Exposes serving-layer summaries and recent activity views.',
+      'Complaint Spike Alert': 'Reads summary data and triggers alert messaging.'
+    };
+
+    // Color by group
+    const groupColors = {
+      ingest: '#6cf',        // blue
+      process: '#f6c85f',   // yellow
+      storage: '#e96',      // orange
+      serve: '#a6e22e'      // green
+    };
+
+    // Graph data
+    const graphData = { nodes, links };
+
+    // 3D Force Graph
+    const Graph = ForceGraph3D()
+      (document.getElementById('3d-graph'))
+      .graphData(graphData)
+      .backgroundColor('#181c24')
+      .nodeLabel('id')
+      .nodeAutoColorBy('group')
+      .nodeThreeObject(node => {
+        // Custom node: sphere with label
+        const groupColor = groupColors[node.group] || '#fff';
+        const sprite = new window.THREE.SpriteText(node.id);
+        sprite.color = groupColor;
+        sprite.textHeight = 8;
+        sprite.backgroundColor = 'rgba(0,0,0,0.5)';
+        return sprite;
+      })
+      .linkDirectionalArrowLength(6)
+      .linkDirectionalArrowRelPos(1)
+      .linkDirectionalParticles(3)
+      .linkDirectionalParticleSpeed(0.008)
+      .linkColor(link => {
+        // Color links by source node group
+        const src = nodes.find(n => n.id === link.source.id || n.id === link.source);
+        return groupColors[src?.group] || '#fff';
+      })
+      .onNodeClick(node => {
+        // Show info panel
+        document.getElementById('info-panel').classList.remove('hidden');
+        document.getElementById('node-name').textContent = node.id;
+        document.getElementById('node-desc').textContent = nodeInfo[node.id] || '';
+      });
+
+    // Hide info panel when clicking outside
+    document.body.addEventListener('click', function(e) {
+      if (!e.target.closest('#info-panel') && !e.target.closest('canvas')) {
+        document.getElementById('info-panel').classList.add('hidden');
+      }
+    });
+
+    // Fit camera to graph
+    setTimeout(() => {
+      Graph.zoomToFit(400, 60);
+    }, 500);
+  </script>
+</body>
+</html>

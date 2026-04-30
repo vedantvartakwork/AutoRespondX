@@ -175,6 +175,7 @@ class StreamProcessor:
             .writeStream \
             .foreachBatch(self._process_batch) \
             .option('checkpointLocation', checkpoint_dir) \
+            .trigger(processingTime='10 seconds') \
             .start()
 
         query.awaitTermination()
