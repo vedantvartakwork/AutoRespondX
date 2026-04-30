@@ -77,8 +77,8 @@ class StreamProcessor:
             logger.info(f"No records in batch {epoch_id}")
             return
 
-        rows = batch_df.selectExpr("CAST(value AS STRING) AS value").collect()
-        logger.info(f"Processing batch {epoch_id} with {len(rows)} records")
+        rows = batch_df.selectExpr("CAST(value AS STRING) AS value").toLocalIterator()
+        logger.info(f"Processing batch {epoch_id}")
 
         processed_count = 0
         duplicate_count = 0
@@ -175,7 +175,7 @@ class StreamProcessor:
             .writeStream \
             .foreachBatch(self._process_batch) \
             .option('checkpointLocation', checkpoint_dir) \
-            .trigger(processingTime='10 seconds') \
+            .trigger(processingTime='30 seconds') \
             .start()
 
         query.awaitTermination()
